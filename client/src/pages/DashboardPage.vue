@@ -12,10 +12,10 @@ import { useWebSocket } from '@/composables/useWebSocket'
 import { useAuth } from '@/composables/useAuth'
 import type { SecurityAlert } from '@/types/graph'
 
-const { alerts,      loading: alertsLoading,  refresh: refreshAlerts }      = useAlerts()
-const { incidents,   loading: incidentsLoading                              } = useIncidents()
-const { riskyUsers,  loading: riskyLoading,   refresh: refreshRiskyUsers }   = useRiskyUsers()
-const { latestScore, scorePercent, scoreHistory, loading: scoreLoading, refresh: refreshScore } = useSecureScore()
+const { alerts,      loading: alertsLoading,     error: alertsError,    refresh: refreshAlerts }    = useAlerts()
+const { incidents,   loading: incidentsLoading,  error: incidentsError, refresh: refreshIncidents } = useIncidents()
+const { riskyUsers,  loading: riskyLoading,      error: riskyError,     refresh: refreshRiskyUsers } = useRiskyUsers()
+const { latestScore, scorePercent, scoreHistory, loading: scoreLoading, error: scoreError, refresh: refreshScore } = useSecureScore()
 const { getToken } = useAuth()
 
 // Live updates via WebSocket — merge new alerts into the reactive list.
@@ -98,7 +98,7 @@ onMounted(async () => {
   // Fetch all data in parallel.
   await Promise.allSettled([
     refreshAlerts(),
-    useIncidents().refresh(),
+    refreshIncidents(),
     refreshRiskyUsers(),
     refreshScore(),
   ])
@@ -126,6 +126,17 @@ onMounted(async () => {
           </span>
         </p>
       </div>
+
+      <!-- Error banners (shown when Graph API returns 403/502) -->
+      <template v-if="alertsError || incidentsError || riskyError || scoreError">
+        <div class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive space-y-1">
+          <p class="font-semibold">One or more data sources failed to load:</p>
+          <p v-if="alertsError">• Alerts — {{ alertsError }}</p>
+          <p v-if="incidentsError">• Incidents — {{ incidentsError }}</p>
+          <p v-if="riskyError">• Risky Users — {{ riskyError }}</p>
+          <p v-if="scoreError">• Secure Score — {{ scoreError }}</p>
+        </div>
+      </template>
 
       <!-- Stat cards -->
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
