@@ -65,6 +65,46 @@ func (h *SecurityHandler) GetSecureScores(c *gin.Context) {
 	respond(c, data, err)
 }
 
+// graphProbeResult is returned by DebugGraph for each Graph endpoint.
+type graphProbeResult struct {
+	Endpoint string `json:"endpoint"`
+	OK       bool   `json:"ok"`
+	Error    string `json:"error,omitempty"`
+	Bytes    int    `json:"bytes,omitempty"`
+}
+
+// DebugGraph probes all four Graph API endpoints and returns a summary of
+// which ones succeed and which return errors (e.g. 403 "not provisioned").
+// Useful for diagnosing tenant licensing / permission issues.
+// Route: GET /api/debug/graph  (requires valid Bearer token)
+func (h *SecurityHandler) DebugGraph(c *gin.Context) {
+	type probe struct {
+		name string
+		fn   func() ([]byte, error)
+	}
+	probes := []probe{
+		{"/security/alerts_v2", h.graphSvc.GetAlerts},
+		{"/security/incidents", h.graphSvc.GetIncidents},
+		{"/identityProtection/riskyUsers", h.graphSvc.GetRiskyUsers},
+		{"/security/secureScores", h.graphSvc.GetSecureScores},
+	}
+
+	results := make([]graphProbeResult, 0, len(probes))
+	for _, p := range probes {
+		data, err := p.fn()
+		r := graphProbeResult{Endpoint: p.name}
+		if err != nil {
+			r.Error = err.Error()
+		} else {
+			r.OK = true
+			r.Bytes = len(data)
+		}
+		results = append(results, r)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"probes": results})
+}
+
 // wsMessage is the shape of messages pushed over the WebSocket connection.
 type wsMessage struct {
 	Type    string          `json:"type"`
