@@ -129,7 +129,7 @@ func (g *GraphService) GetAlerts() ([]byte, error) {
 
 // GetIncidents returns the raw JSON from /security/incidents.
 func (g *GraphService) GetIncidents() ([]byte, error) {
-	return g.get("/security/incidents?$top=100&$orderby=createdDateTime desc")
+	return g.get("/security/incidents?$top=50&$orderby=createdDateTime desc")
 }
 
 // GetRiskyUsers returns the raw JSON from /identityProtection/riskyUsers.

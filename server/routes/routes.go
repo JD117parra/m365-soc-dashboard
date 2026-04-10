@@ -34,6 +34,11 @@ func Setup(r *gin.Engine, cfg *config.Config, h *handlers.SecurityHandler) {
 		api.GET("/security/incidents", h.GetIncidents)
 		api.GET("/identity/riskyUsers", h.GetRiskyUsers)
 		api.GET("/security/secureScores", h.GetSecureScores)
+
+		// Debug endpoint: probes all four Graph endpoints and reports their
+		// status. Useful for diagnosing 403 / provisioning issues in the tenant.
+		// Protected by AuthMiddleware so it can't be hit anonymously.
+		api.GET("/debug/graph", h.DebugGraph)
 	}
 
 	// WebSocket endpoint.

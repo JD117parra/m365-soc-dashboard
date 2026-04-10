@@ -39,5 +39,7 @@ const msalConfiguration: Configuration = {
  */
 export const msalInstance = new PublicClientApplication(msalConfiguration)
 
-/** Scopes requested when acquiring tokens for the Go backend / Graph API proxy. */
-export const graphScopes = ['https://graph.microsoft.com/.default']
+/** Scopes requested when acquiring tokens for the Go backend.
+ *  The token audience will be api://{CLIENT_ID}, which the backend validates.
+ */
+export const graphScopes = [`api://${import.meta.env.VITE_CLIENT_ID}/access_as_user`]
