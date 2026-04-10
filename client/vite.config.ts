@@ -15,11 +15,10 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // REST API: strip /api prefix before forwarding to Go server
+      // REST API: forward /api/* as-is to Go server (routes are under /api group)
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
       },
       // WebSocket: forward as-is (no prefix strip)
       '/ws': {

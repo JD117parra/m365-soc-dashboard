@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math/big"
 	"net/http"
 	"strings"
@@ -130,18 +131,25 @@ func getKey(kid, tenantID string) (*rsa.PublicKey, error) {
 }
 
 // ValidateTokenPublic parses and validates an Azure AD JWT using the tenant's
-// public keys. Exported so the WebSocket route can reuse the same logic.
+// public keys. It also verifies the audience matches our App Registration.
+// Exported so the WebSocket route can reuse the same logic.
 func ValidateTokenPublic(tokenStr string, cfg *config.Config) (*jwt.Token, error) {
-	return jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		kid, ok := token.Header["kid"].(string)
-		if !ok {
-			return nil, fmt.Errorf("missing kid in token header")
-		}
-		return getKey(kid, cfg.TenantID)
-	})
+	expectedAudience := "api://" + cfg.ClientID
+	return jwt.Parse(tokenStr,
+		func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			kid, ok := token.Header["kid"].(string)
+			if !ok {
+				return nil, fmt.Errorf("missing kid in token header")
+			}
+			return getKey(kid, cfg.TenantID)
+		},
+		jwt.WithAudience(expectedAudience),
+		jwt.WithExpirationRequired(),
+		jwt.WithLeeway(10*time.Minute), // tolerate clock skew between Azure AD and this server
+	)
 }
 
 // AuthMiddleware validates the Bearer JWT in the Authorization header.
@@ -162,6 +170,7 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 
 		token, err := ValidateTokenPublic(parts[1], cfg)
 		if err != nil || !token.Valid {
+			log.Printf("[auth] token validation failed: %v", err)
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
 			return
 		}
