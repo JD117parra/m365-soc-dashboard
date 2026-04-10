@@ -47,3 +47,7 @@ coverage/
 # Temp
 tmp/
 .tmp/
+
+# Claude Code
+.claude/
+.history/
